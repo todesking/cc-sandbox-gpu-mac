@@ -363,7 +363,3 @@ In short, compared with a sandboxed Bash command in the same session:
   list them in `permissions.additionalDirectories` instead.
 - Custom `CLAUDE_CONFIG_DIR` / `CLAUDE_CODE_TMPDIR` are not supported.
 - macOS only.
-
-## License
-
-TBD
