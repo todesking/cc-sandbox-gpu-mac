@@ -1,11 +1,11 @@
 /*
- * gpu-run launcher.
+ * cc-gpu-run launcher.
  *
- * Claude Code starts gpu-run outside its sandbox, with an environment the model
+ * Claude Code starts cc-gpu-run outside its sandbox, with an environment the model
  * can influence. Node honors NODE_OPTIONS, DYLD_* and friends, and /bin/sh honors
  * SHELLOPTS/PS4, so neither may be the entry point. This launcher is a hardened
  * runtime binary (dyld ignores DYLD_* for it); it hands the original environment
- * to gpu-run as opaque data and starts node with a fixed, minimal environment.
+ * to cc-gpu-run as opaque data and starts node with a fixed, minimal environment.
  *
  * Build: see scripts/install.ts (GPU_RUN_NODE, GPU_RUN_CLI and GPU_RUN_SELF are
  * absolute paths baked in at install time).
@@ -69,14 +69,14 @@ static char *encode_environ(void) {
 int main(int argc, char **argv) {
   struct passwd *pw = getpwuid(getuid());
   if (!pw || !pw->pw_dir) {
-    fputs("gpu-run: cannot determine home directory\n", stderr);
+    fputs("cc-gpu-run: cannot determine home directory\n", stderr);
     return 125;
   }
   char *home = concat("HOME=", pw->pw_dir);
   char *encoded = encode_environ();
   char **nargv = calloc((size_t)argc + 3, sizeof(char *));
   if (!home || !encoded || !nargv) {
-    fputs("gpu-run: out of memory\n", stderr);
+    fputs("cc-gpu-run: out of memory\n", stderr);
     return 125;
   }
   char *nenv[] = {
@@ -92,6 +92,6 @@ int main(int argc, char **argv) {
   nargv[2] = GPU_RUN_CLI;
   for (int i = 1; i < argc; i++) nargv[i + 2] = argv[i];
   execve(GPU_RUN_NODE, nargv, nenv);
-  perror("gpu-run: cannot start node (" GPU_RUN_NODE ")");
+  perror("cc-gpu-run: cannot start node (" GPU_RUN_NODE ")");
   return 125;
 }

@@ -49,7 +49,7 @@ export function findClaudeProcess(home: string): ClaudeProcess {
   try {
     parents = parentPids();
   } catch {
-    throw new RefuseError('cannot list processes; gpu-run must run outside the sandbox (add it to sandbox.excludedCommands)');
+    throw new RefuseError('cannot list processes; cc-gpu-run must run outside the sandbox (add it to sandbox.excludedCommands)');
   }
   const versions = claudeVersionsDir(home);
   let pid = parents.get(process.pid);
@@ -74,24 +74,24 @@ export function findClaudeProcess(home: string): ClaudeProcess {
     }
     pid = parents.get(pid);
   }
-  throw new RefuseError('no Claude Code ancestor process found; gpu-run only runs as a command started by Claude Code');
+  throw new RefuseError('no Claude Code ancestor process found; cc-gpu-run only runs as a command started by Claude Code');
 }
 
 const UNSUPPORTED_FLAGS = /(?:^|\s)--(settings|setting-sources|disallowedTools|disallowed-tools)(?=[=\s]|$)/;
 const UNSUPPORTED_ENV = /(?:^|\s)(CLAUDE_CONFIG_DIR|CLAUDE_CODE_TMPDIR|CLAUDE_TMPDIR)=/;
 
-/** Refuse Claude Code launches whose settings gpu-run cannot reproduce. Returns warnings. */
+/** Refuse Claude Code launches whose settings cc-gpu-run cannot reproduce. Returns warnings. */
 export function checkClaudeLaunch(cc: ClaudeProcess): string[] {
   const flag = UNSUPPORTED_FLAGS.exec(cc.commandLine);
-  if (flag) throw new RefuseError(`Claude Code was started with --${flag[1]}, which gpu-run does not support`);
+  if (flag) throw new RefuseError(`Claude Code was started with --${flag[1]}, which cc-gpu-run does not support`);
   if (!/(?:^|\s)(HOME|PATH)=/.test(cc.commandLine)) {
     throw new RefuseError(`cannot read the launch environment of Claude Code (pid ${cc.pid})`);
   }
   const env = UNSUPPORTED_ENV.exec(cc.commandLine);
-  if (env) throw new RefuseError(`Claude Code was started with ${env[1]} set, which gpu-run does not support`);
+  if (env) throw new RefuseError(`Claude Code was started with ${env[1]} set, which cc-gpu-run does not support`);
   const warnings: string[] = [];
   if (/(?:^|\s)--add-dir(?=[=\s]|$)/.test(cc.commandLine)) {
-    warnings.push('directories passed to Claude Code with --add-dir are not writable inside gpu-run');
+    warnings.push('directories passed to Claude Code with --add-dir are not writable inside cc-gpu-run');
   }
   return warnings;
 }

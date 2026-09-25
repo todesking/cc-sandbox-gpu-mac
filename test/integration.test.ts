@@ -12,11 +12,11 @@ import { buildConfig } from '../src/rules.ts';
 import { shellQuote } from '../src/run.ts';
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'gpu-run-it-')));
+const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gpu-run-it-')));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 describe('srt integration', () => {
-  it('produces a profile gpu-run can take apart and patch', async () => {
+  it('produces a profile cc-gpu-run can take apart and patch', async () => {
     const P = path.join(tmp, 'proj');
     fs.mkdirSync(P, { recursive: true });
     const ctx = { home: tmp, projectRoot: P, configDir: path.join(tmp, '.claude'), tempRoot: path.join(tmp, 'claude-tmp') };
@@ -42,11 +42,11 @@ describe('srt integration', () => {
 });
 
 describe('launcher', () => {
-  const bin = path.join(tmp, 'gpu-run');
+  const bin = path.join(tmp, 'cc-gpu-run');
   const cli = path.join(tmp, 'dump.mjs');
   fs.writeFileSync(cli, 'process.stdout.write(JSON.stringify({ argv: process.argv.slice(2), env: process.env }));\n');
   const node = fs.realpathSync(process.execPath);
-  execFileSync('/usr/bin/cc', ['-O2', '-Wall', '-Werror', `-DGPU_RUN_NODE="${node}"`, `-DGPU_RUN_CLI="${cli}"`, `-DGPU_RUN_SELF="${bin}"`, '-o', bin, path.join(repo, 'launcher/gpu-run.c')]);
+  execFileSync('/usr/bin/cc', ['-O2', '-Wall', '-Werror', `-DGPU_RUN_NODE="${node}"`, `-DGPU_RUN_CLI="${cli}"`, `-DGPU_RUN_SELF="${bin}"`, '-o', bin, path.join(repo, 'launcher/cc-gpu-run.c')]);
   execFileSync('/usr/bin/codesign', ['--force', '--sign', '-', '--options', 'runtime', bin], { stdio: 'ignore' });
 
   const evil = path.join(tmp, 'evil.dylib');

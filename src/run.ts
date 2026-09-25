@@ -19,7 +19,7 @@ export interface RunOptions {
   /** W */
   cwd: string;
   argv: string[];
-  /** environment gpu-run was started with */
+  /** environment cc-gpu-run was started with */
   env: Record<string, string>;
   explain: boolean;
 }

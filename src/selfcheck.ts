@@ -32,7 +32,7 @@ export function writableVia(config: SandboxRuntimeConfig, p: string): string | u
 }
 
 /**
- * gpu-run's own files must not be writable from the sandbox it builds (or Claude Code's,
+ * cc-gpu-run's own files must not be writable from the sandbox it builds (or Claude Code's,
  * which has the same allowWrite roots): otherwise a sandboxed command could replace them
  * and have them run outside any sandbox the next time.
  */
@@ -40,7 +40,7 @@ export function checkInstallNotWritable(config: SandboxRuntimeConfig, paths: str
   for (const p of paths) {
     const via = writableVia(config, p);
     if (via !== undefined) {
-      throw new RefuseError(`${p} is writable from the sandbox (via allowWrite ${via}); install gpu-run elsewhere`);
+      throw new RefuseError(`${p} is writable from the sandbox (via allowWrite ${via}); install cc-gpu-run elsewhere`);
     }
   }
 }

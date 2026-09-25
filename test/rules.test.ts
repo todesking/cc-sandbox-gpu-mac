@@ -6,7 +6,7 @@ import { after, describe, it } from 'node:test';
 import { RefuseError } from '../src/errors.ts';
 import { buildConfig, type RuleContext, type TierSettings } from '../src/rules.ts';
 
-const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'gpu-run-rules-')));
+const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cc-gpu-run-rules-')));
 after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 const H = path.join(tmp, 'home');

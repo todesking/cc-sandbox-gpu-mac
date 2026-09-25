@@ -12,7 +12,7 @@ import { loadSettings } from './settings.ts';
 
 const EXIT_REFUSED = 125;
 
-const USAGE = `usage: gpu-run [--explain] [--] <command> [args...]
+const USAGE = `usage: cc-gpu-run [--explain] [--] <command> [args...]
 
 Run <command> in a Seatbelt sandbox rebuilt from the Claude Code settings,
 with Metal GPU access added. Must be started by Claude Code through
@@ -54,12 +54,12 @@ async function main(): Promise<number> {
     process.stderr.write(USAGE);
     return 2;
   }
-  if (process.platform !== 'darwin') throw new RefuseError('gpu-run only supports macOS');
+  if (process.platform !== 'darwin') throw new RefuseError('cc-gpu-run only supports macOS');
 
   const encodedEnv = process.env['GPU_RUN_ENV'];
   const launcher = process.env['GPU_RUN_LAUNCHER'];
   if (encodedEnv === undefined || launcher === undefined) {
-    throw new RefuseError('gpu-run must be started through its launcher (see README: Install)');
+    throw new RefuseError('cc-gpu-run must be started through its launcher (see README: Install)');
   }
   const env = decodeEnv(encodedEnv);
 
@@ -82,7 +82,7 @@ async function main(): Promise<number> {
   const build = buildConfig(ctx, tiers, effective);
   checkInstallNotWritable(build.config, [launcher, packageRoot(), fs.realpathSync(process.execPath)]);
 
-  for (const w of [...warnings, ...build.warnings]) process.stderr.write(`gpu-run: warning: ${w}\n`);
+  for (const w of [...warnings, ...build.warnings]) process.stderr.write(`cc-gpu-run: warning: ${w}\n`);
   return runSandboxed({ ctx, build, cwd: process.cwd(), argv: args.command, env, explain: args.explain });
 }
 
@@ -90,9 +90,9 @@ main().then(
   code => process.exit(code),
   (e: unknown) => {
     if (e instanceof RefuseError) {
-      process.stderr.write(`gpu-run: refused: ${e.message}\n`);
+      process.stderr.write(`cc-gpu-run: refused: ${e.message}\n`);
     } else {
-      process.stderr.write(`gpu-run: error: ${e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
+      process.stderr.write(`cc-gpu-run: error: ${e instanceof Error ? (e.stack ?? e.message) : String(e)}\n`);
     }
     process.exit(EXIT_REFUSED);
   },

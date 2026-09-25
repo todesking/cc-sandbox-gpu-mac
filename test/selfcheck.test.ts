@@ -27,7 +27,7 @@ describe('writableVia', () => {
     assert.equal(writableVia(config, '/Users/u/proj/dist/cli.js'), '/Users/u/proj');
     assert.equal(writableVia(config, '/Users/u/.cache/x'), '/Users/u/.cache/**');
     assert.equal(writableVia(config, '/Users/u/proj/.git/hooks/pre-commit'), undefined);
-    assert.equal(writableVia(config, '/Users/u/.local/bin/gpu-run'), undefined);
+    assert.equal(writableVia(config, '/Users/u/.local/bin/cc-gpu-run'), undefined);
   });
 
   it('refuses writable install paths', () => {

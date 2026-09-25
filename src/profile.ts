@@ -3,7 +3,7 @@ import { RefuseError } from './errors.ts';
 export const GPU_ANCHOR = '(allow iokit-get-properties)';
 
 export const GPU_RULES = [
-  '; GPU (Metal) - added by gpu-run',
+  '; GPU (Metal) - added by cc-gpu-run',
   '(allow iokit-open (iokit-user-client-class "AGXDeviceUserClient"))',
   '(allow mach-lookup (global-name "com.apple.MTLCompilerService"))',
 ].join('\n');

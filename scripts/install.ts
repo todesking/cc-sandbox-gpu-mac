@@ -1,4 +1,4 @@
-// Install gpu-run outside every sandbox-writable location. Run outside Claude Code's sandbox:
+// Install cc-gpu-run outside every sandbox-writable location. Run outside Claude Code's sandbox:
 //   npm run install-local [-- --prefix ~/.local]
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -16,7 +16,7 @@ const prefix = path.resolve(
 );
 const libDir = path.join(prefix, 'share', 'cc-sandbox-gpu-mac');
 const binDir = path.join(prefix, 'bin');
-const launcher = path.join(binDir, 'gpu-run');
+const launcher = path.join(binDir, 'cc-gpu-run');
 const node = fs.realpathSync(process.execPath);
 const cli = path.join(libDir, 'dist', 'cli.js');
 
@@ -46,7 +46,7 @@ sh('/usr/bin/cc', [
   `-DGPU_RUN_SELF="${launcher}"`,
   '-o',
   tmp,
-  path.join(repo, 'launcher', 'gpu-run.c'),
+  path.join(repo, 'launcher', 'cc-gpu-run.c'),
 ]);
 sh('/usr/bin/codesign', ['--force', '--sign', '-', '--options', 'runtime', tmp]);
 fs.renameSync(tmp, launcher);

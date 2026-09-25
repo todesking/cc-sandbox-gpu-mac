@@ -12,15 +12,15 @@ This cannot be fixed from inside the sandbox:
 - Claude Code runs `/usr/bin/sandbox-exec` by absolute path, so a `sandbox-exec` shim on `PATH` is never used.
 - srt has no setting for extra IOKit classes ([sandbox-runtime#560](https://github.com/anthropics/sandbox-runtime/issues/560)).
 
-`gpu-run` is started by Claude Code **outside** its sandbox (via `sandbox.excludedCommands`).
+`cc-gpu-run` is started by Claude Code **outside** its sandbox (via `sandbox.excludedCommands`).
 It rebuilds a sandbox from the Claude Code settings that is at least as strict as
 Claude Code's own, adds GPU access only, and runs the command inside it.
 
 ```
-Claude Code ── Bash: ~/.local/bin/gpu-run python train.py
+Claude Code ── Bash: ~/.local/bin/cc-gpu-run python train.py
                  │
                  ▼  launcher (hardened binary, outside Claude Code's sandbox)
-               gpu-run (node, clean environment)
+               cc-gpu-run (node, clean environment)
                                                   1. find the parent Claude Code process
                                                   2. read settings (claude-agent-sdk resolveSettings)
                                                   3. build an srt config            (§ Rule generation)
@@ -45,7 +45,7 @@ npm run install-local            # or: npm run install-local -- --prefix /some/p
 ```
 
 This copies the package to `~/.local/share/cc-sandbox-gpu-mac`, and compiles and
-ad-hoc signs the launcher as `~/.local/bin/gpu-run` with the absolute paths of `node`
+ad-hoc signs the launcher as `~/.local/bin/cc-gpu-run` with the absolute paths of `node`
 and the package baked in. Reinstall after upgrading Node.js.
 
 Then add the launcher, **by absolute path**, to the excluded commands in your user
@@ -54,7 +54,7 @@ settings (`~/.claude/settings.json`):
 ```json
 {
   "sandbox": {
-    "excludedCommands": ["/Users/you/.local/bin/gpu-run *"]
+    "excludedCommands": ["/Users/you/.local/bin/cc-gpu-run *"]
   }
 }
 ```
@@ -62,29 +62,29 @@ settings (`~/.claude/settings.json`):
 and tell Claude to call it by that path (e.g. in `CLAUDE.md`):
 
 ```sh
-/Users/you/.local/bin/gpu-run python train.py --device mps
-/Users/you/.local/bin/gpu-run --explain python train.py   # print config, reasons and profile; run nothing
+/Users/you/.local/bin/cc-gpu-run python train.py --device mps
+/Users/you/.local/bin/cc-gpu-run --explain python train.py   # print config, reasons and profile; run nothing
 ```
 
 Excluded commands still go through the normal permission flow (prompt or auto mode).
-An allow rule such as `Bash(/Users/you/.local/bin/gpu-run *)` removes the prompt; because
-the inner command is sandboxed by `gpu-run`, this is comparable to `sandbox.autoAllowBashIfSandboxed`.
+An allow rule such as `Bash(/Users/you/.local/bin/cc-gpu-run *)` removes the prompt; because
+the inner command is sandboxed by `cc-gpu-run`, this is comparable to `sandbox.autoAllowBashIfSandboxed`.
 
-Exit status: the command's own status, or 125 when `gpu-run` refuses or fails.
+Exit status: the command's own status, or 125 when `cc-gpu-run` refuses or fails.
 
 ## Security model
 
-**Invariant.** The sandbox built by `gpu-run` is never less restrictive than the one
+**Invariant.** The sandbox built by `cc-gpu-run` is never less restrictive than the one
 Claude Code applies to Bash commands in the same session, except for the rules in § 8.
-Where Claude Code's behavior cannot be reproduced exactly, `gpu-run` is stricter or refuses to run.
+Where Claude Code's behavior cannot be reproduced exactly, `cc-gpu-run` is stricter or refuses to run.
 
-**Untrusted inputs.** The model chooses `gpu-run`'s arguments, working directory and
+**Untrusted inputs.** The model chooses `cc-gpu-run`'s arguments, working directory and
 environment. None of them may widen the sandbox:
 
-- `cd ~/other-repo && gpu-run …` must not make another repository writable,
-  so the project root comes from the Claude Code process, not from `gpu-run`'s cwd.
-- `HOME=/tmp/x gpu-run …` must not load an attacker-written `settings.json`,
-  so `$HOME`, `$CLAUDE_CONFIG_DIR`, `$TMPDIR`, … of `gpu-run` itself are ignored.
+- `cd ~/other-repo && cc-gpu-run …` must not make another repository writable,
+  so the project root comes from the Claude Code process, not from `cc-gpu-run`'s cwd.
+- `HOME=/tmp/x cc-gpu-run …` must not load an attacker-written `settings.json`,
+  so `$HOME`, `$CLAUDE_CONFIG_DIR`, `$TMPDIR`, … of `cc-gpu-run` itself are ignored.
 
 **Code that runs outside any sandbox.** Everything between Claude Code and
 `sandbox-exec` is hardened against the caller's environment:
@@ -96,10 +96,10 @@ environment. None of them may widen the sandbox:
   `LANG`, `HOME` (from the user database) and the original environment as opaque data
   (`GPU_RUN_ENV`, base64 of NUL-separated entries).
 - The excluded command is registered by absolute path, so `PATH` cannot redirect it.
-- `gpu-run` spawns `/usr/bin/sandbox-exec` directly; no shell runs outside the sandbox.
+- `cc-gpu-run` spawns `/usr/bin/sandbox-exec` directly; no shell runs outside the sandbox.
   External tools (`ps`, `lsof`) are called by absolute path with a fixed environment.
 - The launcher, the installed package and `node` must not be writable from the sandbox,
-  or a sandboxed command could replace them. `gpu-run` checks this against the config it
+  or a sandboxed command could replace them. `cc-gpu-run` checks this against the config it
   builds and refuses otherwise; do not install into a directory Claude Code lets commands write.
 
 **Trusted inputs.**
@@ -109,7 +109,7 @@ environment. None of them may widen the sandbox:
   It is found by walking up the process tree, which a sandboxed command cannot forge.
 - The OS user database (uid, home directory).
 
-**Refusal.** `gpu-run` exits with an error and runs nothing when:
+**Refusal.** `cc-gpu-run` exits with an error and runs nothing when:
 
 - no Claude Code ancestor process is found (e.g. it was reparented after its parent exited);
 - it was not started through the launcher;
@@ -138,7 +138,7 @@ The output is an srt `SandboxRuntimeConfig`. Paths handed to srt are always abso
 | `C` | Claude config dir | `H/.claude` (a custom `CLAUDE_CONFIG_DIR` is refused) |
 | `T` | Claude Code temp root | `/tmp/claude-<uid>` (a custom `CLAUDE_CODE_TMPDIR` is refused) |
 | `D` | added directories | `permissions.additionalDirectories` (all tiers). `--add-dir` in `CC`'s argv is ignored with a warning: `ps` output cannot be split reliably, and leaving it out is only stricter |
-| `W` | working directory for the command | `gpu-run`'s own cwd; grants nothing |
+| `W` | working directory for the command | `cc-gpu-run`'s own cwd; grants nothing |
 
 Every path is canonicalized: `~` expanded, made absolute, and the existing prefix
 resolved with `realpath`. Seatbelt matches real paths (`/tmp` is `/private/tmp`),
@@ -171,7 +171,7 @@ of a path depends on the file it was written in.
 Git-style globs (`*`, `**`, `?`, `[…]`) are kept as globs after the prefix is resolved.
 A trailing `/` or `/**` on `additionalDirectories` is dropped.
 An allow entry that cannot be resolved is skipped with a warning; a deny entry that
-cannot be resolved makes `gpu-run` refuse.
+cannot be resolved makes `cc-gpu-run` refuse.
 
 ### 4. Filesystem
 
@@ -186,14 +186,14 @@ Union of:
 5. `sandbox.filesystem.allowWrite` from all tiers
 6. srt built-ins: `/dev/{stdout,stderr,null,tty,dtracehelper,autofs_nowait}`, `/tmp/claude`, `/private/tmp/claude`, `H/.npm/_logs`, `H/.claude/debug` (re-denied by 4.2)
 
-Claude Code grants more than this in some sessions; `gpu-run` does not reproduce it:
+Claude Code grants more than this in some sessions; `cc-gpu-run` does not reproduce it:
 directories added with `--add-dir` or during the session (`/add-dir`, entered worktrees) and the main
 repository's git directory when `P` is a linked worktree.
 
 #### 4.2 Write deny (`denyWrite`)
 
 Takes precedence over 4.1. Claude Code protects about a hundred individual paths,
-several of them session-internal. `gpu-run` covers them with broader rules.
+several of them session-internal. `cc-gpu-run` covers them with broader rules.
 
 1. **Claude Code configuration**
    - `C` entirely, and the glob `H/.claude*` (`~/.claude.json`, its backups, …)
@@ -208,7 +208,7 @@ several of them session-internal. `gpu-run` covers them with broader rules.
 4. **Claude Code runtime files under `T`**
    - `T/bash-edit-diff`
    - `T/*/*/tasks` (background task output of every session)
-5. **srt built-ins.** srt adds these itself. `gpu-run` initializes srt with cwd `P`, so they are anchored at `P` and apply at any depth below it:
+5. **srt built-ins.** srt adds these itself. `cc-gpu-run` initializes srt with cwd `P`, so they are anchored at `P` and apply at any depth below it:
    `.gitconfig`, `.gitmodules`, `.bashrc`, `.bash_profile`, `.zshrc`, `.zprofile`,
    `.profile`, `.ripgreprc`, `.mcp.json`, `.vscode/`, `.idea/`, `.claude/commands/`,
    `.claude/agents/`, `.git/hooks/`, `.git/config`
@@ -221,21 +221,21 @@ Reads are allowed everywhere else.
 1. `Read(…)` deny rules, all tiers
 2. `sandbox.filesystem.denyRead`, all tiers
 3. `sandbox.credentials.files[].path`, all tiers, both `deny` and `mask`
-   (Claude Code turns `mask` into deny on macOS and ignores repo-tier `mask` entries; `gpu-run` denies them all)
+   (Claude Code turns `mask` into deny on macOS and ignores repo-tier `mask` entries; `cc-gpu-run` denies them all)
 4. Claude Code internals: `T/bash-edit-diff`, `C/ide`, `C/bridge-spawn`
 
 #### 4.4 Read allow (`allowRead`)
 
 `sandbox.filesystem.allowRead` from the **trusted tiers only**; only the managed tier
 when a managed source sets `sandbox.filesystem.allowManagedReadPathsOnly`.
-Claude Code also honors project and local entries; `gpu-run` ignores them so that a
+Claude Code also honors project and local entries; `cc-gpu-run` ignores them so that a
 repository cannot re-open paths denied by user or managed settings.
 srt semantics apply: a `denyRead` entry more specific than the `allowRead` region
 it falls in stays denied.
 
 ### 5. Network
 
-`gpu-run` starts its own srt proxies. Claude Code's proxy cannot be reused
+`cc-gpu-run` starts its own srt proxies. Claude Code's proxy cannot be reused
 because it authenticates each session.
 
 - `allowedDomains` = `sandbox.network.allowedDomains` ∪ `WebFetch(domain:…)` allow rules, all tiers.
@@ -249,19 +249,19 @@ because it authenticates each session.
 
 ### 6. Child environment
 
-The child starts from `gpu-run`'s environment, then:
+The child starts from `cc-gpu-run`'s environment, then:
 
-- every `sandbox.credentials.envVars[].name` is removed (Claude Code substitutes a sentinel for `mask`; `gpu-run` removes the variable);
-- srt adds the proxy variables, `SANDBOX_RUNTIME=1` and `TMPDIR` (`gpu-run` sets `CLAUDE_CODE_TMPDIR=T` before calling srt).
+- every `sandbox.credentials.envVars[].name` is removed (Claude Code substitutes a sentinel for `mask`; `cc-gpu-run` removes the variable);
+- srt adds the proxy variables, `SANDBOX_RUNTIME=1` and `TMPDIR` (`cc-gpu-run` sets `CLAUDE_CODE_TMPDIR=T` before calling srt).
 
 ### 7. Settings keys
 
-`sandbox` keys not listed here make `gpu-run` refuse, so that a restriction added
+`sandbox` keys not listed here make `cc-gpu-run` refuse, so that a restriction added
 to Claude Code later is never dropped silently.
 
 | Key | Handling |
 |---|---|
-| `enabled` | ignored; `gpu-run` always sandboxes |
+| `enabled` | ignored; `cc-gpu-run` always sandboxes |
 | `failIfUnavailable`, `autoAllowBashIfSandboxed`, `allowUnsandboxedCommands`, `excludedCommands`, `ignoreViolations` | not applicable, ignored |
 | `enableWeakerNestedSandbox`, `bwrapPath`, `socatPath`, `ripgrep` | Linux or tooling only, ignored |
 | `enableWeakerNetworkIsolation` | merged value, all tiers |
@@ -274,7 +274,7 @@ to Claude Code later is never dropped silently.
 | `network.strictAllowlist` | always in effect |
 | `network.tlsTerminate` | refuse |
 | `credentials.files`, `credentials.envVars` | § 4.3, § 6 |
-| `credentials.awsPairs`, `credentials.sigv4`, `credentials.allowPlaintextInject` | ignored; only used for mask injection, which `gpu-run` does not do |
+| `credentials.awsPairs`, `credentials.sigv4`, `credentials.allowPlaintextInject` | ignored; only used for mask injection, which `cc-gpu-run` does not do |
 
 | `permissions` key | Handling |
 |---|---|
@@ -328,10 +328,10 @@ Denials that remain with both rules are harmless and are deliberately not allowe
 
 ### 9. Execution
 
-- `gpu-run <command> [args…]`: the arguments are shell-quoted and joined into
+- `cc-gpu-run <command> [args…]`: the arguments are shell-quoted and joined into
   `cd W && <command> <args…>`, which runs as `/bin/bash -c` inside the sandbox.
-  Use `gpu-run bash -c '…'` for pipelines.
-- `gpu-run` calls srt with cwd `P`, takes srt's `env … /usr/bin/sandbox-exec -p <profile> …`
+  Use `cc-gpu-run bash -c '…'` for pipelines.
+- `cc-gpu-run` calls srt with cwd `P`, takes srt's `env … /usr/bin/sandbox-exec -p <profile> …`
   command line apart, patches the profile and spawns `/usr/bin/sandbox-exec` itself.
 - The child's environment is the original one minus § 6, plus srt's variables.
 - stdio is inherited, the exit status is propagated, SIGINT/SIGTERM/SIGHUP/SIGQUIT are
@@ -343,7 +343,7 @@ Denials that remain with both rules are harmless and are deliberately not allowe
 
 In short, compared with a sandboxed Bash command in the same session:
 
-- no writes to git metadata in `P` or `D` (`git commit` fails inside `gpu-run`);
+- no writes to git metadata in `P` or `D` (`git commit` fails inside `cc-gpu-run`);
 - no writes anywhere in `~/.claude`, or in any `.claude/` / `.mcp.json` in `P`, `D` and the ancestors of `P`;
 - no directories or hosts granted during the session;
 - project and local `allowRead` entries are ignored;
@@ -359,7 +359,7 @@ In short, compared with a sandboxed Bash command in the same session:
   Claude Code changes often; re-check § 4 when upgrading.
 - `resolveSettings` is an alpha API and follows Claude Code's release cycle.
 - Only Claude Code from the native installer is recognized.
-- Directories added with `--add-dir` or during the session are not writable inside `gpu-run`;
+- Directories added with `--add-dir` or during the session are not writable inside `cc-gpu-run`;
   list them in `permissions.additionalDirectories` instead.
 - Custom `CLAUDE_CONFIG_DIR` / `CLAUDE_CODE_TMPDIR` are not supported.
 - macOS only.
